@@ -124,7 +124,7 @@ class CustomImageFolder(Dataset):
     def __len__(self):
         return len(self.image_paths)
 
-    def __getitem__(self, index: int) -> Tuple[Any, Any, Any]:
+    """ def __getitem__(self, index: int) -> Tuple[Any, Any, Any]:
         img_path = self.image_paths[index]
         img = Image.open(img_path).convert("RGB")
 
@@ -133,7 +133,26 @@ class CustomImageFolder(Dataset):
 
         class_label = torch.tensor(self.class_index, dtype=torch.long)
         location_label = torch.tensor(self.location_index, dtype=torch.long)
-        return img, class_label, location_label
+        return img, class_label, location_label """
+    
+    #NOTE P.V: for CCKD
+    def __getitem__(self, index: int) -> Tuple[Any, Any, Any]:
+        img_path = self.image_paths[index]
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transform:
+            img = self.transform(img)
+
+        class_label = torch.zeros(4, dtype=torch.long)
+        class_label[self.class_index] = 1
+        location_label = torch.zeros(6, dtype=torch.long)
+        location_label[self.location_index] = 1
+        
+        return {
+            "img": img, 
+            "target": class_label, 
+            "location": location_label
+        }
 
 
 class MultipleDomainDataset:
