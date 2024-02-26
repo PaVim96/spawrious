@@ -255,6 +255,7 @@ class SpawriousBenchmark(MultipleDomainDataset):
 
     def __init__(self, benchmark, root_dir, augment=True):
         combinations = _get_combinations(benchmark.lower())
+        self.combinations = combinations
         self.type1 = benchmark.lower().startswith("o2o")
         train_datasets, test_datasets = self._prepare_data_lists(
             combinations["train_combinations"],
@@ -264,11 +265,22 @@ class SpawriousBenchmark(MultipleDomainDataset):
         )
         self.datasets = [ConcatDataset(test_datasets)] + train_datasets
 
+    def get_combinations(self): 
+        return self.combinations
+    
+
     def get_train_dataset(self):
         return torch.utils.data.ConcatDataset(self.datasets[1:])
 
     def get_test_dataset(self):
         return self.datasets[0]
+    
+
+    def get_train_transform(self): 
+        return self.train_transform
+    
+    def get_test_transform(self): 
+        return self.test_transform
 
     # Prepares the train and test data lists by applying the necessary transformations.
     def _prepare_data_lists(
@@ -284,7 +296,6 @@ class SpawriousBenchmark(MultipleDomainDataset):
         test_transforms = timm.data.create_transform(
             **self.data_config, is_training=False
         )
-
         # test_transforms = transforms.Compose(
         #     [
         #         transforms.Resize((self.input_shape[1], self.input_shape[2])),
@@ -308,6 +319,9 @@ class SpawriousBenchmark(MultipleDomainDataset):
         test_data_list = self._create_data_list(
             test_combinations, root_dir, test_transforms
         )
+
+        self.train_transform = train_transforms
+        self.test_transform = test_transforms
 
         return train_data_list, test_data_list
 
