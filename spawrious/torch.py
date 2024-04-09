@@ -243,7 +243,7 @@ def _get_combinations(benchmark_type: str) -> Tuple[dict, dict]:
     if benchmark_type not in combinations:
         raise ValueError("Invalid benchmark type")
     group, test, filler = combinations[benchmark_type]
-    return build_combination(benchmark_type, group, test, filler)
+    return build_combination(benchmark_type, group, test, filler), filler
 
 
 class SpawriousBenchmark(MultipleDomainDataset):
@@ -253,8 +253,10 @@ class SpawriousBenchmark(MultipleDomainDataset):
     class_list = ["bulldog", "corgi", "dachshund", "labrador"]
     locations_list = ["desert", "jungle", "dirt", "mountain", "snow", "beach"]
 
-    def __init__(self, benchmark, root_dir, augment=True):
-        combinations = _get_combinations(benchmark.lower())
+    def __init__(self, benchmark, root_dir, augment=True, disable_transform = False):
+        self.disable_transform = disable_transform
+        combinations, filler = _get_combinations(benchmark.lower())
+        self.filler = filler
         self.combinations = combinations
         self.type1 = benchmark.lower().startswith("o2o")
         train_datasets, test_datasets = self._prepare_data_lists(
@@ -264,6 +266,13 @@ class SpawriousBenchmark(MultipleDomainDataset):
             augment,
         )
         self.datasets = [ConcatDataset(test_datasets)] + train_datasets
+
+
+    def get_filler_location_index(self): 
+        if self.filler: 
+            return self.locations_list.index(self.filler)
+        else: 
+            return -1
 
     def get_combinations(self): 
         return self.combinations
@@ -313,12 +322,22 @@ class SpawriousBenchmark(MultipleDomainDataset):
         else:
             train_transforms = test_transforms
 
-        train_data_list = self._create_data_list(
-            train_combinations, root_dir, train_transforms
-        )
-        test_data_list = self._create_data_list(
-            test_combinations, root_dir, test_transforms
-        )
+        
+        if not self.disable_transform:
+            train_data_list = self._create_data_list(
+                train_combinations, root_dir, train_transforms
+            )
+            test_data_list = self._create_data_list(
+                test_combinations, root_dir, test_transforms
+            )
+        else:
+            train_data_list = self._create_data_list(
+                train_combinations, root_dir, None
+            )
+            test_data_list = self._create_data_list(
+                test_combinations, root_dir, None
+            ) 
+
 
         self.train_transform = train_transforms
         self.test_transform = test_transforms
@@ -394,7 +413,7 @@ def _check_images_availability(root_dir: str, dataset_type: str) -> bool:
                     ):
                         return False
         return True
-    combinations = _get_combinations(dataset_type.lower())
+    combinations, _ = _get_combinations(dataset_type.lower())
 
     # Extract the train and test combinations
     train_combinations = combinations["train_combinations"]
@@ -427,7 +446,7 @@ def _check_images_availability(root_dir: str, dataset_type: str) -> bool:
     return True
 
 
-def get_spawrious_dataset(root_dir: str, dataset_name: str = "entire_dataset"):
+def get_spawrious_dataset(root_dir: str, dataset_name: str = "entire_dataset", augment = True, disable_transform = False):
     """
     Returns the dataset as a torch dataset, and downloads dataset if dataset is not already available.
 
@@ -448,4 +467,4 @@ def get_spawrious_dataset(root_dir: str, dataset_name: str = "entire_dataset"):
     }, f"Invalid dataset type: {dataset_name}"
     _download_dataset_if_not_available(dataset_name, root_dir)
     # TODO: get m2m to use entire dataset, not half of it
-    return SpawriousBenchmark(dataset_name, root_dir, augment=True)
+    return SpawriousBenchmark(dataset_name, root_dir, augment=augment, disable_transform=disable_transform)
